@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import { initializeGeo3DObjects } from './Geo3D/Geo3DRegistry'
+import { initializeGeo3DObjects } from '../../geo3d/core/Geo3DRegistry'
 
 initializeGeo3DObjects()
 

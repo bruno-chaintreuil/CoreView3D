@@ -8,8 +8,8 @@ export const LITHOLOGY_COLORS: Record<string, number> = {
   Fresh_Schist: 0x556B2F,
 }
 
-export function getDefaultDrillholeColor(holeId: string): number {
-  const hash = holeId.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
+export function getDefaultDrillholeColor(id: string): number {
+  const hash = id.split('').reduce((a, b) => a + b.charCodeAt(0), 0)
   const hue = hash % 360
   return hslToHex(hue, 70, 50)
 }

@@ -1,6 +1,6 @@
 import * as THREE from "three"
 import { Geo3DObject } from "./Geo3DObject"
-import { Bounds } from "../core/DrillHole"
+import { Bounds } from "../../utils/Bounds"
 
 interface Geo3DBoundingBoxOptions {
   bounds: Bounds

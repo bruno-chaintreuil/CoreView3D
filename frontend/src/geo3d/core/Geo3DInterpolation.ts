@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { TrajectoryPoint } from '../core/DrillHole'
+import { TrajectoryPoint } from '../../utils/Trajectory'
 
 export function interpolatePointAtDepth(
   points: TrajectoryPoint[],

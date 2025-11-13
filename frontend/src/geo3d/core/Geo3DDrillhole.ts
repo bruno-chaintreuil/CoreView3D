@@ -1,8 +1,9 @@
 import * as THREE from "three"
-import { Geo3DObject } from "./Geo3DObject"
-import { DrillholeTrajectory, AssayData } from "../core/DrillHole"
+import { DrillholeTrajectory, AssayData } from "../../drillholes/base/DrillHole"
 import { LITHOLOGY_COLORS, getDefaultDrillholeColor } from "./Geo3DColors"
 import { interpolatePointAtDepth, getPointsInInterval } from "./Geo3DInterpolation"
+import { Geo3DSpriteObject } from "../base/Geo3DSpriteObject"
+import { TextSprite } from "../base/Geo3DTextSprite"
 
 interface Geo3DDrillholeOptions {
   trajectory: DrillholeTrajectory
@@ -13,7 +14,7 @@ interface Geo3DDrillholeOptions {
   lineWidth?: number
 }
 
-export class Geo3DDrillhole extends Geo3DObject {
+export class Geo3DDrillhole extends Geo3DSpriteObject {
   private trajectory: DrillholeTrajectory
   private assays: AssayData[]
   private options: Required<Geo3DDrillholeOptions>
@@ -23,7 +24,7 @@ export class Geo3DDrillhole extends Geo3DObject {
     const filteredAssays = options.assays?.filter(a => a.Hole_ID === options.trajectory.hole_id) || []
     
     this.trajectory = options.trajectory
-    this.assays = filteredAssays
+    this.assays = this.fillAssayGaps(filteredAssays)
 
     this.options = {
       ...options,
@@ -67,6 +68,22 @@ export class Geo3DDrillhole extends Geo3DObject {
     line.name = `trajectory_${this.trajectory.hole_id}`
     this._object.add(line)
   }
+
+  private fillAssayGaps(assays) {
+    const maxDepth = Math.max(...this.trajectory.points.map(p => p.depth))
+    const sorted = [...assays].sort((a,b)=>a.From-b.From)
+    const filled = []
+    let lastTo = 0
+    for (const a of sorted) {
+      if (a.From > lastTo)
+        filled.push({ Hole_ID: a.Hole_ID, From: lastTo, To: a.From, Lithology: "Unassigned" })
+      filled.push(a)
+      lastTo = a.To
+    }
+    if (lastTo < maxDepth)
+      filled.push({ Hole_ID: sorted[0].Hole_ID, From: lastTo, To: maxDepth, Lithology: "Unassigned" })
+    return filled
+  }  
 
   private buildColoredTrajectory(defaultColor: number) {
     this.assays.forEach((assay, index) => {
@@ -117,32 +134,20 @@ export class Geo3DDrillhole extends Geo3DObject {
   private addLabel() {
     const firstPoint = this.trajectory.points[0]
     const position = new THREE.Vector3(firstPoint.x, firstPoint.y, firstPoint.z)
-
-    const canvas = document.createElement('canvas')
-    const size = 256
-    canvas.width = size
-    canvas.height = size
-    const ctx = canvas.getContext('2d')!
-    ctx.font = 'Bold 48px Arial'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = 'white'
-    ctx.strokeStyle = 'black'
-    ctx.lineWidth = 8
-    ctx.strokeText(this.trajectory.hole_id, size / 2, size / 2)
-    ctx.fillText(this.trajectory.hole_id, size / 2, size / 2)
-
-    const texture = new THREE.CanvasTexture(canvas)
-    const material = new THREE.SpriteMaterial({ map: texture, depthTest: false })
-    const sprite = new THREE.Sprite(material)
-    sprite.position.copy(position)
-    sprite.position.y += 10
-    sprite.scale.set(20, 10, 1)
-    sprite.name = `label_${this.trajectory.hole_id}`
-
-    this._object.add(sprite)
+    position.y += 10
+  
+    const sprite = new TextSprite({
+      text: this.trajectory.hole_id.toString(),
+      position,
+      color: 0xffffff,
+      fontSize: 48,
+      bold: true,
+      depthTest: false
+    })
+    
+    this._object.add(sprite.object)
   }
-
+ 
   getHoleId(): string {
     return this.trajectory.hole_id
   }

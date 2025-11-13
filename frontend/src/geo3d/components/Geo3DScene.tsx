@@ -1,5 +1,7 @@
 import { FC, useMemo, useEffect } from "react"
-import Geo3DFactory from "./Geo3DFactory"
+import { useFrame } from "@react-three/fiber"
+import { Geo3DSpriteObject } from "../base/Geo3DSpriteObject"
+import Geo3DFactory from "../base/Geo3DFactory"
 
 export interface SceneObject {
   key: string
@@ -33,6 +35,14 @@ export const Geo3DScene: FC<Geo3DSceneProps> = ({ objects }) => {
       sceneObjects.forEach(obj => obj?.instance.dispose())
     }
   }, [sceneObjects])
+
+  useFrame(({ camera }) => {
+    for (const obj of sceneObjects) {
+      if (obj.instance instanceof Geo3DSpriteObject) {
+        obj.instance.updateSpriteScales(camera)
+      }
+    }
+  })
 
   return (
     <>
