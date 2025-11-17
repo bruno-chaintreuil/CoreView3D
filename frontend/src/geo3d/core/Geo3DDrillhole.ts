@@ -70,6 +70,11 @@ export class Geo3DDrillhole extends Geo3DSpriteObject {
   }
 
   private fillAssayGaps(assays) {
+    if (!assays || assays.length === 0) {
+      const maxDepth = Math.max(...this.trajectory.points.map(p => p.depth))
+      return [{ Hole_ID: this.trajectory.hole_id, From: 0, To: maxDepth, Lithology: "Unassigned" }]
+    }
+  
     const maxDepth = Math.max(...this.trajectory.points.map(p => p.depth))
     const sorted = [...assays].sort((a,b)=>a.From-b.From)
     const filled = []
