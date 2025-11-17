@@ -56,7 +56,8 @@ def minimum_curvature(depth1: float, depth2: float,
     
     return delta_east, delta_north, delta_vert
 
-def calculate_single_trajectory(collar: pd.Series, 
+
+def calculate_single_trajectory(collar: pd.Series,
                                survey_df: Optional[pd.DataFrame] = None) -> List[Dict]:
     """
     Calculate 3D trajectory for a single drillhole
@@ -69,90 +70,75 @@ def calculate_single_trajectory(collar: pd.Series,
         List of 3D points along the trajectory
     """
     points = []
-    
-    # Starting point at collar
-    current_x = float(collar["East"])
-    current_y = float(collar["North"])
-    current_z = float(collar["Elevation"])
-    
-    points.append({
-        "depth": 0.0,
-        "x": current_x,
-        "y": current_y,
-        "z": current_z
-    })
-    
+
+    # Starting collar coordinates
+    x = float(collar["East"])
+    y = float(collar["North"])
+    z = float(collar["Elevation"])
+
+    points.append({"depth": 0.0, "x": x, "y": y, "z": z})
 
     if survey_df is not None and len(survey_df) > 0:
-        # Use survey data - minimum curvature method
+
         prev_depth = 0.0
-        prev_azimuth = float(collar["Azimuth"])
+        prev_az = float(collar["Azimuth"])
         prev_dip = float(collar["Dip"])
-        
-        for _, survey in survey_df.iterrows():
-            depth = float(survey["Depth"])
-            azimuth = float(survey["Azimuth"])
-            dip = float(survey["Dip"])
-            
-            # Calculate increment using minimum curvature
-            delta_depth = depth - prev_depth
-            
-            # Average angles for the interval
-            avg_azimuth = (prev_azimuth + azimuth) / 2
+
+        for _, row in survey_df.iterrows():
+            depth = float(row["Depth"])
+            az = float(row["Azimuth"])
+            dip = float(row["Dip"])
+
+            # Length of segment
+            d = depth - prev_depth
+
+            # Averaged orientation for the interval
+            avg_az = np.radians((prev_az + az) / 2)
             avg_dip = (prev_dip + dip) / 2
-            
-            # Convert to radians
-            az_rad = np.radians(avg_azimuth)
-            dip_rad = np.radians(avg_dip)
-            
-            # Calculate increments (dip is negative down)
-            dx = delta_depth * np.sin(-dip_rad) * np.sin(az_rad)
-            dy = delta_depth * np.sin(-dip_rad) * np.cos(az_rad)
-            dz = delta_depth * np.cos(-dip_rad)
-            
-            # Update position
-            current_x += dx
-            current_y += dy
-            current_z += dz
-            
-            points.append({
-                "depth": depth,
-                "x": current_x,
-                "y": current_y,
-                "z": current_z
-            })
-            
-            # Update previous values
+
+            # Convert dip to inclination (angle from vertical)
+            incl = np.radians(90 + avg_dip)
+
+            # Orientation: Y+ = North, X+ = East, Z vertical
+            dx = d * np.sin(incl) * np.sin(avg_az)
+            dy = d * np.sin(incl) * np.cos(avg_az)
+            dz = d * np.cos(incl)
+
+            # Update coordinates
+            x += dx
+            y += dy
+            z += dz
+
+            points.append({"depth": depth, "x": x, "y": y, "z": z})
+
             prev_depth = depth
-            prev_azimuth = azimuth
+            prev_az = az
             prev_dip = dip
-            
+
     else:
-        # No survey data - straight line from collar
+      
         max_depth = float(collar["Max_Depth"])
-        azimuth = float(collar["Azimuth"])
+        az = float(collar["Azimuth"])
         dip = float(collar["Dip"])
-        
-        # Convert to radians
-        az_rad = np.radians(azimuth)
-        dip_rad = np.radians(dip)
-        
-        # Calculate end point
-        dx = max_depth * np.sin(-dip_rad) * np.sin(az_rad)
-        dy = max_depth * np.sin(-dip_rad) * np.cos(az_rad)
-        dz = max_depth * np.cos(-dip_rad)
-        
+
+        az_rad = np.radians(az)
+        incl = np.radians(90 + dip)
+
+        dx = max_depth * np.sin(incl) * np.sin(az_rad)
+        dy = max_depth * np.sin(incl) * np.cos(az_rad)
+        dz = max_depth * np.cos(incl)
+
         points.append({
             "depth": max_depth,
-            "x": current_x + dx,
-            "y": current_y + dy,
-            "z": current_z + dz
+            "x": x + dx,
+            "y": y + dy,
+            "z": z + dz
         })
-    
+
     return points
 
 
-def calculate_trajectories(collar_df: pd.DataFrame, 
+def calculate_trajectories(collar_df: pd.DataFrame,
                           survey_df: Optional[pd.DataFrame] = None) -> List[Dict]:
     """
     Calculate 3D trajectories for all drillholes
@@ -164,23 +150,23 @@ def calculate_trajectories(collar_df: pd.DataFrame,
     Returns:
         List of drillhole trajectories with metadata
     """
-    trajectories = []
-    
+
+    results = []
+
     for _, collar in collar_df.iterrows():
         hole_id = collar["Hole_ID"]
-        
-        # Get survey data for this hole if available
-        hole_survey = None
 
+        # Extract surveys for this hole, if any
+        sub = None
         if survey_df is not None:
-            hole_survey = survey_df[survey_df["Hole_ID"] == hole_id]
-            if len(hole_survey) == 0:
-                hole_survey = None
-        
-        # Calculate trajectory
-        points = calculate_single_trajectory(collar, hole_survey)
-        
-        trajectories.append({
+            subset = survey_df[survey_df["Hole_ID"] == hole_id]
+            if len(subset) > 0:
+                sub = subset
+
+        # Compute the trajectory
+        pts = calculate_single_trajectory(collar, sub)
+
+        results.append({
             "hole_id": hole_id,
             "collar": {
                 "east": float(collar["East"]),
@@ -190,8 +176,8 @@ def calculate_trajectories(collar_df: pd.DataFrame,
                 "azimuth": float(collar["Azimuth"]),
                 "dip": float(collar["Dip"])
             },
-            "points": points,
-            "has_survey": hole_survey is not None
+            "points": pts,
+            "has_survey": sub is not None
         })
-    
-    return trajectories
+
+    return results
