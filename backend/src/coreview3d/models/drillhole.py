@@ -1,13 +1,9 @@
-"""
-Data models for drillhole information
-"""
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import date
 
 
 class CollarModel(BaseModel):
-    """Drillhole collar (starting point) information"""
     hole_id: str = Field(..., alias="Hole_ID")
     east: float = Field(..., alias="East")
     north: float = Field(..., alias="North")
@@ -23,7 +19,6 @@ class CollarModel(BaseModel):
 
 
 class SurveyModel(BaseModel):
-    """Drillhole survey (deviation) measurement"""
     hole_id: str = Field(..., alias="Hole_ID")
     depth: float = Field(..., alias="Depth")
     azimuth: float = Field(..., alias="Azimuth")
@@ -34,7 +29,6 @@ class SurveyModel(BaseModel):
 
 
 class AssayModel(BaseModel):
-    """Geochemical assay or geological interval"""
     hole_id: str = Field(..., alias="Hole_ID")
     from_depth: float = Field(..., alias="From")
     to_depth: float = Field(..., alias="To")
@@ -46,7 +40,6 @@ class AssayModel(BaseModel):
 
 
 class TrajectoryPoint(BaseModel):
-    """Single point along drillhole trajectory"""
     depth: float
     x: float
     y: float
@@ -54,14 +47,12 @@ class TrajectoryPoint(BaseModel):
 
 
 class DrillholeTrajectory(BaseModel):
-    """Complete 3D trajectory of a drillhole"""
     hole_id: str
     collar: CollarModel
     points: List[TrajectoryPoint]
 
 
 class DrillholeData(BaseModel):
-    """Complete drillhole dataset"""
     collars: List[CollarModel]
     surveys: Optional[List[SurveyModel]] = None
     assays: Optional[List[AssayModel]] = None

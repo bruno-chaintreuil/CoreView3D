@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""
-summarize_repo_debug.py
-Parcourt un dépôt et produit un résumé (classes, fonctions, imports) avec prints de debug.
-Usage:
-    python summarize_repo_debug.py /chemin/vers/repo --verbose --json > summary.json
-"""
 
 import os
 import sys
