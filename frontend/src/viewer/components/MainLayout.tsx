@@ -1,12 +1,11 @@
-import { FC, useEffect } from 'react'
+import { FC, useEffect, useState } from 'react'
 import { DrillholeData } from '../../drillholes/base/DrillHole'
 import { MenuBar } from './MenuBar'
 import { DataTreePanel } from './DataTreePanel'
 import { ViewerCanvas } from './Viewer'
-import { useViewerStore } from '../base/useViewerStore'
-import { useSessionData } from '../../session/base/useSession'
 import { SessionData } from '../../session/base/SessionManager'
 import { StatusBar } from './StatusBar'
+import { useViewerStore } from '../base/useViewerStore'
 
 interface MainLayoutProps {
   data: DrillholeData
@@ -18,7 +17,7 @@ interface MainLayoutProps {
   onClearSession: () => void
 }
 
-export const MainLayout: FC<MainLayoutProps> = ({ 
+export const MainLayout: FC<MainLayoutProps> = ({
   data, 
   initialSettings,
   onOpenLoader,
@@ -27,20 +26,20 @@ export const MainLayout: FC<MainLayoutProps> = ({
   onImportSession,
   onClearSession,
 }) => {
-  const store = useViewerStore()
-  const sessionData = useSessionData()
+  const vis_store = useViewerStore()
+  const vis_props = vis_store.getSessionVisProps()
 
   useEffect(() => {
     const holeIds = data.trajectories.map(t => t.hole_id)
-    store.initializeFromSession(initialSettings, holeIds)
+    vis_store.initializeFromSession(initialSettings, holeIds)
   }, [data, initialSettings])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      onSaveSession(sessionData)
+      onSaveSession(vis_props)
     }, 1000)
     return () => clearTimeout(timeout)
-  }, [sessionData, onSaveSession])
+  }, [vis_props, onSaveSession])
 
   const handleExportScreenshot = () => {
     const canvas = document.querySelector('canvas')
@@ -68,24 +67,24 @@ export const MainLayout: FC<MainLayoutProps> = ({
       <MenuBar
         onOpenLoader={onOpenLoader}
         onExportScreenshot={handleExportScreenshot}
-        onSaveSession={() => onSaveSession(sessionData)}
-        onExportSession={() => onExportSession(sessionData)}
+        onSaveSession={() => onSaveSession(vis_props)}
+        onExportSession={() => onExportSession(vis_props)}
         onImportSession={onImportSession}
         onClearSession={onClearSession}
       />
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
-        overflow: 'hidden',
-        position: 'relative'
-      }}>
-        {store.showDataTree && (
-          <DataTreePanel data={data} />
-        )}
-        <div style={{ flex: 1, position: 'relative' }}>
-          <ViewerCanvas data={data} />
-        </div>
-      </div>
+        <div style={{ 
+          flex: 1, 
+          display: 'flex', 
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          {vis_store.showDataTree && (
+            <DataTreePanel data={data} />
+          )}
+          <div style={{ flex: 1, position: 'relative' }}>
+            <ViewerCanvas data={data} />
+          </div>
+        </div>      
       <StatusBar />
     </div>
   )

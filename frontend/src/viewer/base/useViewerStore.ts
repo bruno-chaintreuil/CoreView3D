@@ -1,27 +1,35 @@
 import { create } from 'zustand'
 
+/* ---------- Camera ---------- */
+
 export type CameraView = 'top' | 'front' | 'side' | 'iso' | 'reset'
 
-interface CameraState {
+export interface CameraState {
   position: [number, number, number]
   target: [number, number, number]
 }
 
+/* ---------- Store ---------- */
+
 interface ViewerState {
-  // Camera
+  /* Camera */
   cameraView: CameraView | null
   cameraState: CameraState | null
   setCameraView: (view: CameraView) => void
   setCameraState: (state: CameraState) => void
-  
-  // Visibility
+
+  /* Z exaggeration */
+  zScale: number
+  setZScale: (scale: number) => void
+
+  /* Visibility */
   visibleHoles: Set<string>
   toggleHole: (holeId: string) => void
   setVisibleHoles: (holes: Set<string>) => void
-  showAllHoles: () => void
+  showAllHoles: (holeIds: string[]) => void
   hideAllHoles: () => void
-  
-  // Display options
+
+  /* Display options */
   showCollars: boolean
   showLabels: boolean
   showEndMarkers: boolean
@@ -29,53 +37,71 @@ interface ViewerState {
   showBoundingBox: boolean
   showAxes: boolean
   showDataTree: boolean
-  
-  setShowCollars: (show: boolean) => void
-  setShowLabels: (show: boolean) => void
-  setShowEndMarkers: (show: boolean) => void
-  setShowGrid: (show: boolean) => void
-  setShowBoundingBox: (show: boolean) => void
-  setShowAxes: (show: boolean) => void
-  setShowDataTree: (show: boolean) => void
-  
-  // Selection
+
+  setShowCollars: (v: boolean) => void
+  setShowLabels: (v: boolean) => void
+  setShowEndMarkers: (v: boolean) => void
+  setShowGrid: (v: boolean) => void
+  setShowBoundingBox: (v: boolean) => void
+  setShowAxes: (v: boolean) => void
+  setShowDataTree: (v: boolean) => void
+
+  /* Selection */
   selectedHoleId: string | null
+  selectedHoleIds: string[]
   setSelectedHoleId: (id: string | null) => void
-  
-  // Mouse position
+  toggleSelectedHole: (id: string) => void
+  clearSelectedHoles: () => void
+
+  /* Mouse */
   mousePosition: { x: number; y: number; z: number }
-  setMousePosition: (pos: { x: number; y: number; z: number }) => void
-  
-  // Initialize from session
+  setMousePosition: (p: { x: number; y: number; z: number }) => void
+
+  /* Session */
   initializeFromSession: (settings: any, holeIds: string[]) => void
+  getSessionVisProps: () => SessionVisProps
 }
 
+const sessionVisSelector = (s: ViewerState) => ({
+  visibleHoles: Array.from(s.visibleHoles),
+  showCollars: s.showCollars,
+  showLabels: s.showLabels,
+  showEndMarkers: s.showEndMarkers,
+  showGrid: s.showGrid,
+  showBoundingBox: s.showBoundingBox,
+  showAxes: s.showAxes,
+  showDataTree: s.showDataTree,
+  camera: s.cameraState,
+})
+
+export type SessionVisProps = ReturnType<typeof sessionVisSelector>
+
+/* ---------- Store implementation ---------- */
+
 export const useViewerStore = create<ViewerState>((set, get) => ({
-  // Camera initial state
+  /* Camera */
   cameraView: null,
   cameraState: null,
   setCameraView: (view) => set({ cameraView: view }),
   setCameraState: (state) => set({ cameraState: state }),
-  
-  // Visibility initial state
-  visibleHoles: new Set<string>(),
-  toggleHole: (holeId) => set((state) => {
-    const newSet = new Set(state.visibleHoles)
-    if (newSet.has(holeId)) {
-      newSet.delete(holeId)
-    } else {
-      newSet.add(holeId)
-    }
-    return { visibleHoles: newSet }
-  }),
+
+  /* Z exaggeration */
+  zScale: 1.0,
+  setZScale: (scale) => set({ zScale: scale }),
+
+  /* Visibility */
+  visibleHoles: new Set(),
+  toggleHole: (holeId) =>
+    set((state) => {
+      const s = new Set(state.visibleHoles)
+      s.has(holeId) ? s.delete(holeId) : s.add(holeId)
+      return { visibleHoles: s }
+    }),
   setVisibleHoles: (holes) => set({ visibleHoles: holes }),
-  showAllHoles: () => {
-    // This will be called with all hole IDs from the component
-    // We need the hole IDs to be passed, so we'll handle this differently
-  },
+  showAllHoles: (holeIds) => set({ visibleHoles: new Set(holeIds) }),
   hideAllHoles: () => set({ visibleHoles: new Set() }),
-  
-  // Display options initial state
+
+  /* Display options */
   showCollars: true,
   showLabels: true,
   showEndMarkers: true,
@@ -83,27 +109,35 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   showBoundingBox: true,
   showAxes: true,
   showDataTree: true,
-  
-  setShowCollars: (show) => set({ showCollars: show }),
-  setShowLabels: (show) => set({ showLabels: show }),
-  setShowEndMarkers: (show) => set({ showEndMarkers: show }),
-  setShowGrid: (show) => set({ showGrid: show }),
-  setShowBoundingBox: (show) => set({ showBoundingBox: show }),
-  setShowAxes: (show) => set({ showAxes: show }),
-  setShowDataTree: (show) => set({ showDataTree: show }),
-  
-  // Selection
+
+  setShowCollars: (v) => set({ showCollars: v }),
+  setShowLabels: (v) => set({ showLabels: v }),
+  setShowEndMarkers: (v) => set({ showEndMarkers: v }),
+  setShowGrid: (v) => set({ showGrid: v }),
+  setShowBoundingBox: (v) => set({ showBoundingBox: v }),
+  setShowAxes: (v) => set({ showAxes: v }),
+  setShowDataTree: (v) => set({ showDataTree: v }),
+
+  /* Selection */
   selectedHoleId: null,
+  selectedHoleIds: [],
   setSelectedHoleId: (id) => set({ selectedHoleId: id }),
-  
-  // Mouse position
+  toggleSelectedHole: (id) =>
+    set((state) => {
+      const s = new Set(state.selectedHoleIds)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return { selectedHoleIds: Array.from(s) }
+    }),
+  clearSelectedHoles: () => set({ selectedHoleIds: [] }),
+
+  /* Mouse */
   mousePosition: { x: 0, y: 0, z: 0 },
-  setMousePosition: (pos) => set({ mousePosition: pos }),
-  
-  // Initialize from session
-  initializeFromSession: (settings, holeIds) => {
+  setMousePosition: (p) => set({ mousePosition: p }),
+
+  /* Session */
+  initializeFromSession: (settings, holeIds) =>
     set({
-      visibleHoles: new Set(settings?.visibleHoles || holeIds),
+      visibleHoles: new Set(settings?.visibleHoles ?? holeIds),
       showCollars: settings?.showCollars ?? true,
       showLabels: settings?.showLabels ?? true,
       showEndMarkers: settings?.showEndMarkers ?? true,
@@ -111,7 +145,9 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
       showBoundingBox: settings?.showBoundingBox ?? true,
       showAxes: settings?.showAxes ?? true,
       showDataTree: settings?.showDataTree ?? true,
-      cameraState: settings?.camera || null,
-    })
-  },
+      cameraState: settings?.camera ?? null,
+      zScale: settings?.zScale ?? 1.0,
+    }),
+
+  getSessionVisProps: () => sessionVisSelector(get()),
 }))

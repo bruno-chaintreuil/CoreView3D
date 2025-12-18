@@ -1,4 +1,4 @@
-import { FC } from 'react'
+import { FC, useState } from 'react'
 import { 
   Navbar, 
   NavbarGroup, 
@@ -9,7 +9,8 @@ import {
   MenuItem,
   MenuDivider,
   Alignment,
-  Classes
+  Classes,
+  Slider
 } from '@blueprintjs/core'
 import { Popover2 } from '@blueprintjs/popover2'
 import '@blueprintjs/popover2/lib/css/blueprint-popover2.css'
@@ -18,12 +19,15 @@ import { useViewerStore } from '../base/useViewerStore'
 export type CameraView = 'top' | 'front' | 'side' | 'iso' | 'reset'
 
 interface MenuBarProps {
+  sessionId?: string,
   onOpenLoader: () => void
   onExportScreenshot: () => void
   onSaveSession?: () => void
   onExportSession?: () => void
   onImportSession?: (file: File) => void
   onClearSession?: () => void
+  showCrossSection?: boolean
+  onOpenCrossSection?: () => void
 }
 
 export const MenuBar: FC<MenuBarProps> = ({ 
@@ -33,8 +37,12 @@ export const MenuBar: FC<MenuBarProps> = ({
   onExportSession,
   onImportSession,
   onClearSession,
+  onOpenCrossSection,
+  sessionId,
 }) => {
-  const { setCameraView, showDataTree, setShowDataTree } = useViewerStore()
+  const { setCameraView, showDataTree, setShowDataTree, zScale, setZScale } = useViewerStore()
+  const selectedHoleIds = useViewerStore(s => s.selectedHoleIds);
+  
   const handleExportScreenshot = () => {
     onExportScreenshot()
   }
@@ -64,6 +72,19 @@ export const MenuBar: FC<MenuBarProps> = ({
     }
     input.click()
   }
+
+  const analysisMenu = (
+    <Menu className={Classes.DARK}>
+      <MenuItem 
+        icon="horizontal-distribution" 
+        text="Cross-Section" 
+        onClick={onOpenCrossSection}
+        disabled={!sessionId}
+      />
+      <MenuItem icon="grid-view" text="Block Model" disabled />
+      <MenuItem icon="scatter-plot" text="Interpolation" disabled />
+    </Menu>
+  )
 
   const fileMenu = (
     <Menu className={Classes.DARK}>
@@ -99,6 +120,12 @@ export const MenuBar: FC<MenuBarProps> = ({
         onClick={onClearSession}
         disabled={!onClearSession}
         intent="danger"
+      />
+      <MenuDivider />
+      <MenuItem 
+        icon="cog" 
+        text="Cross-sections" 
+        onClick={onOpenCrossSection}
       />
       <MenuDivider />
       <MenuItem 
@@ -213,6 +240,22 @@ export const MenuBar: FC<MenuBarProps> = ({
       </NavbarGroup>
 
       <NavbarGroup align={Alignment.RIGHT}>
+        <Button
+          icon="layout"
+          text="cross-section"
+          disabled={selectedHoleIds.length < 1}
+          onClick={onOpenCrossSection}
+        />
+        <Slider
+          min={0.1}
+          max={5}
+          stepSize={0.1}
+          labelStepSize={2.5}
+          value={zScale}
+          onChange={setZScale}
+          vertical={false}
+        />
+        <NavbarDivider />
         <Button 
           className={Classes.MINIMAL} 
           icon="camera" 

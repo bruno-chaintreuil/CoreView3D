@@ -28,8 +28,28 @@ function getDrillholeColor(holeId: string): string {
 }
 
 export const DataTreePanel: FC<DataTreePanelProps> = ({data}) => {
-  const { setVisibleHoles, hideAllHoles, visibleHoles, toggleHole, showAxes, setShowAxes, showEndMarkers, setShowEndMarkers, showCollars, setShowCollars, showBoundingBox, setShowBoundingBox, showGrid, setShowGrid, showLabels, setShowLabels } = useViewerStore()
-  
+  const {
+    visibleHoles,
+    toggleHole,
+    setVisibleHoles,
+    hideAllHoles,
+    showAxes,
+    setShowAxes,
+    showEndMarkers,
+    setShowEndMarkers,
+    showCollars,
+    setShowCollars,
+    showBoundingBox,
+    setShowBoundingBox,
+    showGrid,
+    setShowGrid,
+    showLabels,
+    setShowLabels,
+    setSelectedHoleId,
+    selectedHoleId,
+    toggleSelectedHole,
+  } = useViewerStore()
+
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     new Set(['drillholes', 'display', 'scene', 'stats'])
@@ -66,7 +86,9 @@ export const DataTreePanel: FC<DataTreePanelProps> = ({data}) => {
   const treeNodes: TreeNodeInfo<CustomNodeData>[] = useMemo(() => {
     const nodes: TreeNodeInfo<CustomNodeData>[] = []
 
-    const allVisible = filteredHoles.length > 0 && filteredHoles.every(t => visibleHoles.has(t.hole_id))
+    const allVisible =
+      filteredHoles.length > 0 &&
+      filteredHoles.every(t => visibleHoles.has(t.hole_id))
 
     const drillholesNode: TreeNodeInfo<CustomNodeData> = {
       id: 'drillholes',
@@ -80,7 +102,6 @@ export const DataTreePanel: FC<DataTreePanelProps> = ({data}) => {
               handleToggleAll(!allVisible)
             }}
             style={{ margin: 0 }}
-            title="Toggle all drillholes"
           />
         </div>
       ),
@@ -88,11 +109,21 @@ export const DataTreePanel: FC<DataTreePanelProps> = ({data}) => {
       isExpanded: expandedIds.has('drillholes'),
       nodeData: { type: 'category' },
       childNodes: filteredHoles.map(traj => {
-        const isVisible = visibleHoles.has(traj.hole_id)
+        const visible = visibleHoles.has(traj.hole_id)
+        const selected = selectedHoleId === traj.hole_id
+
         return {
           id: `hole_${traj.hole_id}`,
           label: (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                width: '100%',
+                fontWeight: selected ? 'bold' : undefined
+              }}
+            >
               <div style={{
                 width: '10px',
                 height: '10px',
@@ -106,8 +137,11 @@ export const DataTreePanel: FC<DataTreePanelProps> = ({data}) => {
           ),
           icon: (
             <Checkbox
-              checked={isVisible}
-              onChange={() => toggleHole(traj.hole_id)}
+              checked={visible}
+              onChange={(e) => {
+                e.stopPropagation()
+                toggleHole(traj.hole_id)
+              }}
               style={{ margin: 0 }}
             />
           ),
@@ -115,6 +149,7 @@ export const DataTreePanel: FC<DataTreePanelProps> = ({data}) => {
         }
       }),
     }
+
     nodes.push(drillholesNode)
 
     nodes.push({
@@ -161,7 +196,7 @@ export const DataTreePanel: FC<DataTreePanelProps> = ({data}) => {
         {
           id: 'scene_bbox',
           label: 'Bounding Box',
-          icon: <Checkbox checked={showBoundingBox} onChange={( ()=> setShowBoundingBox(!showBoundingBox))} />,
+          icon: <Checkbox checked={showBoundingBox} onChange={() => setShowBoundingBox(!showBoundingBox)} />,
           nodeData: { type: 'option' },
         },
         {
@@ -225,14 +260,7 @@ export const DataTreePanel: FC<DataTreePanelProps> = ({data}) => {
     showBoundingBox,
     showAxes,
     stats,
-    handleToggleAll,
     toggleHole,
-    setShowCollars,
-    setShowLabels,
-    setShowEndMarkers,
-    setShowGrid,
-    setShowBoundingBox,
-    setShowAxes
   ])
 
   const handleNodeClick = (
@@ -242,7 +270,11 @@ export const DataTreePanel: FC<DataTreePanelProps> = ({data}) => {
   ) => {
     e.stopPropagation()
     if (node.nodeData?.type === 'drillhole' && node.nodeData.holeId) {
-      toggleHole(node.nodeData.holeId)
+      
+      console.log('clicked',node.nodeData.holeId)
+      setSelectedHoleId(node.nodeData.holeId)
+      toggleSelectedHole(node.nodeData.holeId)
+
     }
   }
 
