@@ -6,7 +6,7 @@ import { DrillholeData, DrillholeTrajectory } from '../../drillholes/base/DrillH
 import { Geo3DScene, SceneObject } from '../../geo3d/components/Geo3DScene'
 import { CameraController } from '../base/CameraController'
 import { useViewerStore } from '../base/useViewerStore'
-import { TrajectoryPoint } from '../../utils/Trajectory'
+import { TrajectoryPoint } from '../../utils/base/Trajectory'
 
 const ClickHandler: FC<{ onDrillholeClick: (holeId: string) => void }> = ({ 
   onDrillholeClick 
@@ -88,9 +88,8 @@ interface ViewerCanvasProps {
   data: DrillholeData
 }
 
-export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
-  const store = useViewerStore()
-  
+
+export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {  
   const {
     visibleHoles,
     selectedHoleId,
@@ -101,8 +100,8 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
     showBoundingBox,
     showAxes,
     setSelectedHoleId,
-  } = store
-
+  } = useViewerStore()
+  
   const bounds = data.computeBounds()
   const centerX = (bounds.minX + bounds.maxX) / 2
   const centerY = (bounds.minY + bounds.maxY) / 2
@@ -116,7 +115,7 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
         y: p.y - centerY,
         z: p.z - centerZ,
       }))
-      const localTraj = new DrillholeTrajectory(
+            const localTraj = new DrillholeTrajectory(
         traj.hole_id,
         {
           Hole_ID: traj.hole_id,
@@ -182,7 +181,7 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
         } 
       })
     }
-    
+
     localData.trajectories
     .filter(traj => visibleHoles.has(traj.hole_id))
     .forEach(traj => {
@@ -242,7 +241,7 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
       }}
     >
       <CameraController bounds={localBounds} />
-      <Geo3DScene objects={sceneObjects} />
+        <Geo3DScene objects={sceneObjects} />
       <ClickHandler onDrillholeClick={handleDrillholeClick} />  
       <TrackballControls
         target={[0, 0, 0]}

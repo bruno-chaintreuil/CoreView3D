@@ -1,7 +1,7 @@
 
 import * as THREE from "three"
 import { Geo3DObject } from "./Geo3DObject"
-import { Bounds } from "../../utils/Bounds"
+import { Bounds } from "../../utils/base/Bounds"
 
 interface Geo3DGridOptions {
   bounds: Bounds

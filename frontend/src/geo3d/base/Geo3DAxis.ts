@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { Geo3DSpriteObject } from "./Geo3DSpriteObject"
 import { TextSprite } from "./Geo3DTextSprite"
-import { Bounds } from "../../utils/Bounds"
+import { Bounds } from "../../utils/base/Bounds"
 
 export interface Geo3DAxesOptions {
   bounds: Bounds

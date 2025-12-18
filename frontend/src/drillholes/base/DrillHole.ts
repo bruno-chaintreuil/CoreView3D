@@ -1,5 +1,5 @@
-import { BoundData } from "../../utils/Bounds"
-import { TrajectoryPoint } from "../../utils/Trajectory"
+import { BoundData } from "../../utils/base/Bounds"
+import { TrajectoryPoint } from "../../utils/base/Trajectory"
 
 export interface CollarData {
   Hole_ID: string
@@ -94,6 +94,24 @@ export class DrillholeData extends BoundData {
   }
 }
 
+// Helper to normalize assay data from backend (HOLEID) to frontend (Hole_ID)
+function normalizeAssayData(assay: any): AssayData {
+  // Handle different field name cases
+  const holeId = assay.Hole_ID || assay.HOLEID || assay.hole_id || assay.HoleID
+  const fromDepth = assay.From ?? assay.FROM ?? assay.from ?? assay.from_depth ?? 0
+  const toDepth = assay.To ?? assay.TO ?? assay.to ?? assay.to_depth ?? 0
+  const lithology = assay.Lithology || assay.LITHOLOGY || assay.lithology || assay.Lith
+  
+  return {
+    Hole_ID: holeId,
+    From: Number(fromDepth),
+    To: Number(toDepth),
+    Lithology: lithology,
+    // Include all other fields
+    ...assay
+  }
+}
+
 // helper to convert JSON to class instances
 export function parseDrillholeData(json: any): DrillholeData {
   const trajectories = json.trajectories.map((t: any) => 
@@ -112,6 +130,16 @@ export function parseDrillholeData(json: any): DrillholeData {
       t.has_survey
     )
   )
-  const assays = json.assays || []
+  
+  // Normalize assay data to handle both HOLEID and Hole_ID
+  const assays = (json.assays || []).map(normalizeAssayData)
+  
+  console.log('Parsed drillhole data:', {
+    trajectories: trajectories.length,
+    assays: assays.length,
+    sampleAssay: assays[0],
+    sampleTrajectory: trajectories[0]?.hole_id
+  })
+  
   return new DrillholeData(trajectories, assays)
 }
