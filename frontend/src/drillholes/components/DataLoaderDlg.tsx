@@ -14,7 +14,7 @@ import { DrillholeData, parseDrillholeData } from '../base/DrillHole'
 interface DataLoaderDialogProps {
   isOpen: boolean
   onClose: () => void
-  onDataLoaded: (data: DrillholeData) => void
+  onDataLoaded: (data: DrillholeData, sessionId: string) => void
 }
 
 type UploadMode = 'csv' | 'excel'
@@ -47,7 +47,6 @@ export const DataLoaderDialog: FC<DataLoaderDialogProps> = ({
 
     try {
       let response
-      let assaysData = undefined
 
       if (mode === 'csv') {
         if (!collarFile) throw new Error('Collar file is required')
@@ -55,37 +54,43 @@ export const DataLoaderDialog: FC<DataLoaderDialogProps> = ({
         const formData = new FormData()
         formData.append('collar_file', collarFile)
         if (surveyFile) formData.append('survey_file', surveyFile)
+        if (assaysFile) formData.append('assays_file', assaysFile)
 
-        response = await axios.post('/api/process/trajectories', formData, {
+        console.log('Sending CSV files to /api/session/create')
+        response = await axios.post('/api/session/create', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         })
-
-        if (assaysFile) {
-          const assaysFormData = new FormData()
-          assaysFormData.append('file', assaysFile)
-          const assaysResponse = await axios.post('/api/upload/assays', assaysFormData)
-          if (assaysResponse.data.success) assaysData = assaysResponse.data.data
-        }
       } else {
         if (!excelFile) throw new Error('Excel file is required')
         const formData = new FormData()
         formData.append('file', excelFile)
 
-        response = await axios.post('/api/process/excel-trajectories', formData, {
+        console.log('Sending Excel file to /api/session/create-excel')
+        response = await axios.post('/api/session/create-excel', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         })
       }
 
+      console.log('API Response:', response.data)
+
       if (response.data.success) {
+        if (!response.data.session_id) {
+          throw new Error('Server did not return a session_id')
+        }
+
         const parsed = parseDrillholeData({
-          trajectories: response.data.data.trajectories ?? response.data.data,
-          assays: assaysData
+          trajectories: response.data.data.trajectories,
+          assays: response.data.data.assays
         })
         parsed.sanitizeData()
-        onDataLoaded(parsed)
+
+        onDataLoaded(parsed, response.data.session_id)
         onClose()
+      } else {
+        throw new Error('Server returned success: false')
       }
     } catch (err: any) {
+      console.error('Error loading data:', err)
       setError(err.response?.data?.detail || err.message || 'Error processing data')
     } finally {
       setLoading(false)

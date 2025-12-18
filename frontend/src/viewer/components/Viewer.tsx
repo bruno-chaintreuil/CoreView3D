@@ -100,6 +100,7 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
     showBoundingBox,
     showAxes,
     setSelectedHoleId,
+    zScale
   } = useViewerStore()
   
   const bounds = data.computeBounds()
@@ -241,7 +242,9 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
       }}
     >
       <CameraController bounds={localBounds} />
-        <Geo3DScene objects={sceneObjects} />
+        <group scale={[1, 1, zScale]}>
+          <Geo3DScene objects={sceneObjects} />
+        </group>
       <ClickHandler onDrillholeClick={handleDrillholeClick} />  
       <TrackballControls
         target={[0, 0, 0]}
