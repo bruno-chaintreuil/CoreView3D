@@ -20,7 +20,6 @@ export const StatusBar: FC = () => {
         color: '#8A9BA8'
       }}
     >
-      {/* Version */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <span style={{ fontWeight: 600 }}>CoreView3D</span>
         <Tag minimal>v0.1.0</Tag>
@@ -28,23 +27,21 @@ export const StatusBar: FC = () => {
 
       <div style={{ width: '1px', height: '20px', background: '#2F343C' }} />
 
-      {/* Mouse Position (real coordinates) */}
       <div>
         Position: 
         <strong style={{ color: '#10B981', marginLeft: '6px' }}>
           E: {mousePosition.x.toFixed(1)}
         </strong>
-        <strong style={{ color: '#3B82F6', marginLeft: '12px' }}>
+        <strong style={{ color: '#f63b3bff', marginLeft: '12px' }}>
           N: {mousePosition.y.toFixed(1)}
         </strong>
-        <strong style={{ color: '#F59E0B', marginLeft: '12px' }}>
+        <strong style={{ color: '#3B82F6', marginLeft: '12px' }}>
           Z: {mousePosition.z.toFixed(1)}
         </strong>
       </div>
 
       <div style={{ flex: 1 }} />
 
-      {/* Right side info */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
         <span style={{ fontSize: '11px', color: '#64748b' }}>
           Left: Rotate • Right: Pan • Scroll: Zoom
