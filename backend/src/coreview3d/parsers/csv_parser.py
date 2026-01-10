@@ -141,7 +141,6 @@ class DrillholeParser:
     
     def _normalize_column_name(self, col: str) -> str:
         normalized = col.lower().strip()
-        # Remplacer espaces, underscores et tirets
         normalized = normalized.replace(' ', '').replace('_', '').replace('-', '')
         return normalized
     
@@ -155,18 +154,15 @@ class DrillholeParser:
         logger.debug(f"📊 Loaded {data_type} file with {len(df)} rows")
         logger.debug(f"   Original columns: {df.columns.tolist()}")
         
-        # Créer le dictionnaire de renommage
         rename_dict = {}
         for original_col in df.columns:
             normalized = self._normalize_column_name(original_col)
             
-            # Chercher dans le mapping
             if normalized in mapping:
                 standard_name = mapping[normalized]
                 if original_col != standard_name:  # Seulement si différent
                     rename_dict[original_col] = standard_name
         
-        # Appliquer le renommage
         if rename_dict:
             logger.debug(f"✓ Normalizing {data_type} columns: {rename_dict}")
             df = df.rename(columns=rename_dict)
@@ -175,19 +171,16 @@ class DrillholeParser:
         
         logger.debug(f"   Final columns: {df.columns.tolist()}")
         
-        # Vérifier les colonnes requises
         missing = set(required_columns) - set(df.columns)
         if missing:
             available_cols = df.columns.tolist()
             
-            # Message d'erreur amélioré
             error_msg = (
                 f"{data_type} CSV missing required columns: {missing}.\n"
                 f"Found columns: {available_cols}\n"
                 f"Supported variations:\n"
             )
             
-            # Ajouter des exemples pour chaque colonne manquante
             for missing_col in missing:
                 variations = [k for k, v in mapping.items() if v == missing_col]
                 error_msg += f"  - {missing_col}: {', '.join(variations[:5])}...\n"
@@ -203,10 +196,8 @@ class DrillholeParser:
             if df.empty:
                 raise ValueError("Collar CSV is empty")
             
-            # Colonnes requises
             required = ['HOLEID', 'EAST', 'NORTH', 'ELEV']
             
-            # Appliquer le mapping
             df = self._apply_column_mapping(
                 df, 
                 self.COLLAR_COLUMN_MAPPING,
@@ -214,7 +205,6 @@ class DrillholeParser:
                 "Collar"
             )
             
-            # Convertir les types
             df['HOLEID'] = df['HOLEID'].astype(str).str.strip()
             df['EAST'] = pd.to_numeric(df['EAST'], errors='coerce')
             df['NORTH'] = pd.to_numeric(df['NORTH'], errors='coerce')
@@ -223,9 +213,9 @@ class DrillholeParser:
             if 'MAX_DEPTH' in df.columns:
                 df['MAX_DEPTH'] = pd.to_numeric(df['MAX_DEPTH'], errors='coerce')
             
-            # Supprimer les lignes avec des valeurs manquantes dans les colonnes critiques
             initial_len = len(df)
             df = df.dropna(subset=['HOLEID', 'EAST', 'NORTH', 'ELEV'])
+            print("df",df["ELEV"],df["MAX_DEPTH"])
             
             if len(df) < initial_len:
                 logger.warning(f"⚠️ Removed {initial_len - len(df)} rows with missing values")
@@ -247,10 +237,8 @@ class DrillholeParser:
             if df.empty:
                 raise ValueError("Survey CSV is empty")
             
-            # Colonnes requises
             required = ['HOLEID', 'DEPTH', 'AZIMUTH', 'DIP']
             
-            # Appliquer le mapping
             df = self._apply_column_mapping(
                 df,
                 self.SURVEY_COLUMN_MAPPING,
@@ -258,7 +246,6 @@ class DrillholeParser:
                 "Survey"
             )
             
-            # Convertir les types
             df['HOLEID'] = df['HOLEID'].astype(str).str.strip()
             df['DEPTH'] = pd.to_numeric(df['DEPTH'], errors='coerce')
             df['AZIMUTH'] = pd.to_numeric(df['AZIMUTH'], errors='coerce')
@@ -288,10 +275,8 @@ class DrillholeParser:
             if df.empty:
                 raise ValueError("Assays CSV is empty")
             
-            # Colonnes requises
             required = ['HOLEID', 'FROM', 'TO']
             
-            # Appliquer le mapping
             df = self._apply_column_mapping(
                 df,
                 self.ASSAYS_COLUMN_MAPPING,
@@ -299,12 +284,10 @@ class DrillholeParser:
                 "Assays"
             )
             
-            # Convertir les types
             df['HOLEID'] = df['HOLEID'].astype(str).str.strip()
             df['FROM'] = pd.to_numeric(df['FROM'], errors='coerce')
             df['TO'] = pd.to_numeric(df['TO'], errors='coerce')
             
-            # Colonnes optionnelles
             if 'LITHOLOGY' in df.columns:
                 df['LITHOLOGY'] = df['LITHOLOGY'].astype(str).str.strip().str.upper()
             
@@ -314,7 +297,6 @@ class DrillholeParser:
             if 'CU_PCT' in df.columns:
                 df['CU_PCT'] = pd.to_numeric(df['CU_PCT'], errors='coerce')
             
-            # Supprimer les lignes avec des valeurs manquantes dans les colonnes critiques
             initial_len = len(df)
             df = df.dropna(subset=['HOLEID', 'FROM', 'TO'])
             
