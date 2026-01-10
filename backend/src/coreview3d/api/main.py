@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from coreview3d.routers.data_router import data_router
 from coreview3d.routers.session_router import session_router
+from coreview3d.routers.cross_section_router import cross_section_router
 
 app = FastAPI(
     title="CoreView3D Backend",
@@ -19,7 +19,8 @@ app.add_middleware(
 )
 
 app.include_router(session_router)
-app.include_router(data_router)
+app.include_router(cross_section_router)
+
 
 @app.get("/")
 async def health_check():
