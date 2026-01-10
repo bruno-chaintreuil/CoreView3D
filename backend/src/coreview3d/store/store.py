@@ -50,19 +50,16 @@ class PersistenceManager:
             raise
     
     def _serialize_dataframe(self, df: Optional[pd.DataFrame]) -> Optional[bytes]:
-        """Sérialise un DataFrame en bytes avec pickle."""
         if df is None or df.empty:
             return None
         return pickle.dumps(df)
     
     def _deserialize_dataframe(self, data: Optional[bytes]) -> Optional[pd.DataFrame]:
-        """Désérialise des bytes en DataFrame."""
         if data is None:
             return None
         return pickle.loads(data)
 
     async def save_session_data(self, session_id: str, data: SessionData) -> bool:
-        """Sauvegarde une session dans SQLite."""
         try:
             metadata = {
                 "total_holes": len(data.collar_df),
