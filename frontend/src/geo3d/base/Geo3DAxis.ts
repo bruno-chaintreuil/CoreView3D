@@ -6,6 +6,7 @@ import { Bounds } from "../../utils/base/Bounds"
 export interface Geo3DAxesOptions {
   bounds: Bounds
   realBounds: Bounds
+  showAxes?: boolean
   axisLength?: number
   showTicks?: boolean
   tickInterval?: number
@@ -23,60 +24,66 @@ export class Geo3DAxes extends Geo3DSpriteObject {
     super()
     this.bounds = options.bounds
     this.realBounds = options.realBounds
+    
+    const defaultTickSize = 2; 
+    
     this.options = {
       bounds: options.bounds,
       realBounds: options.realBounds,
-      axisLength: options.axisLength ?? 30,
+      showAxes: options.showAxes ?? true,
+      axisLength: options.axisLength ?? 60, 
       showTicks: options.showTicks ?? true,
-      tickInterval: options.tickInterval ?? 50,
-      tickSize: options.tickSize ?? 4,
+      tickInterval: options.tickInterval ?? 100,
+      tickSize: options.tickSize ?? defaultTickSize, 
       colors: options.colors ?? { x: 0xef4444, y: 0x10b981, z: 0x3b82f6 },
     }
     this.build()
   }
 
   private build() {
-    this.createAxis("x", "E", new THREE.Vector3(1, 0, 0))
-    this.createAxis("y", "N", new THREE.Vector3(0, 1, 0))
-    this.createAxis("z", "Z", new THREE.Vector3(0, 0, 1))
-    if (this.options.showTicks) this.createTicks()
+    if (this.options.showAxes) {
+      this.createAxis("x", "EASTING", new THREE.Vector3(1, 0, 0))
+      this.createAxis("y", "NORTHING", new THREE.Vector3(0, 1, 0))
+      this.createAxis("z", "DEPTH (RL)", new THREE.Vector3(0, 0, -1))
+    }
+    
+    if (this.options.showTicks) {
+      this.createTicks()
+    }
   }
 
   private createAxis(axis: "x" | "y" | "z", label: string, direction: THREE.Vector3) {
     const { bounds, options } = this
     const { axisLength, colors } = options
+    const originSurface = new THREE.Vector3(bounds.minX, bounds.minY, bounds.maxZ)
 
-    let start: THREE.Vector3, end: THREE.Vector3, arrowPos: THREE.Vector3, labelPos: THREE.Vector3, color: number
+    let start: THREE.Vector3, end: THREE.Vector3, labelPos: THREE.Vector3, color: number
 
     if (axis === "x") {
-      start = new THREE.Vector3(bounds.minX, bounds.minY, bounds.minZ)
-      end = new THREE.Vector3(bounds.maxX + axisLength, bounds.minY, bounds.minZ)
-      arrowPos = new THREE.Vector3(bounds.maxX + axisLength - 10, bounds.minY, bounds.minZ)
-      labelPos = new THREE.Vector3(bounds.maxX + axisLength + 10, bounds.minY, bounds.minZ)
+      start = originSurface.clone()
+      end = new THREE.Vector3(bounds.maxX + axisLength, bounds.minY, bounds.maxZ)
+      labelPos = new THREE.Vector3(bounds.maxX + axisLength + 30, bounds.minY, bounds.maxZ)
       color = colors.x
     } else if (axis === "y") {
-      start = new THREE.Vector3(bounds.minX, bounds.minY, bounds.minZ)
-      end = new THREE.Vector3(bounds.minX, bounds.maxY + axisLength, bounds.minZ)
-      arrowPos = new THREE.Vector3(bounds.minX, bounds.maxY + axisLength - 10, bounds.minZ)
-      labelPos = new THREE.Vector3(bounds.minX, bounds.maxY + axisLength + 10, bounds.minZ)
+      start = originSurface.clone()
+      end = new THREE.Vector3(bounds.minX, bounds.maxY + axisLength, bounds.maxZ)
+      labelPos = new THREE.Vector3(bounds.minX, bounds.maxY + axisLength + 30, bounds.maxZ)
       color = colors.y
     } else {
-      start = new THREE.Vector3(bounds.minX, bounds.minY, bounds.minZ)
-      end = new THREE.Vector3(bounds.minX, bounds.minY, bounds.maxZ + axisLength)
-      arrowPos = new THREE.Vector3(bounds.minX, bounds.minY, bounds.maxZ + axisLength - 10)
-      labelPos = new THREE.Vector3(bounds.minX, bounds.minY, bounds.maxZ + axisLength + 10)
+      start = originSurface.clone()
+      end = new THREE.Vector3(bounds.minX, bounds.minY, bounds.minZ - axisLength)
+      labelPos = new THREE.Vector3(bounds.minX, bounds.minY, bounds.minZ - axisLength - 30)
       color = colors.z
     }
 
     const geometry = new THREE.BufferGeometry().setFromPoints([start, end])
-    const material = new THREE.LineBasicMaterial({ color })
-    const line = new THREE.Line(geometry, material)
-    this._object.add(line)
+    const material = new THREE.LineBasicMaterial({ color, linewidth: 4 })
+    this._object.add(new THREE.Line(geometry, material))
 
-    const arrowHelper = new THREE.ArrowHelper(direction, arrowPos, 10, color, 4, 3)
+    const arrowHelper = new THREE.ArrowHelper(direction, end, 20, color, 12, 8)
     this._object.add(arrowHelper)
 
-    this.addTextSprite(label, labelPos, color, 1)
+    this.addTextSprite(label, labelPos, color, 3.0, true)
   }
 
   private createTicks() {
@@ -95,59 +102,70 @@ export class Geo3DAxes extends Geo3DSpriteObject {
     let getLabelPosition: (p: THREE.Vector3) => THREE.Vector3
 
     if (axis === "x") {
-      min = bounds.minX
-      max = bounds.maxX
-      realMin = realBounds.minX
-      getTickPosition = (v) => new THREE.Vector3(v, bounds.minY, bounds.minZ)
-      getTickEnd = (p) => new THREE.Vector3(p.x, p.y, p.z - tickSize)
-      getLabelPosition = (p) => new THREE.Vector3(p.x, p.y - tickSize, p.z - tickSize)
+      min = bounds.minX; max = bounds.maxX; realMin = realBounds.minX
+      getTickPosition = (v) => new THREE.Vector3(v, bounds.minY, bounds.maxZ)
+      getTickEnd = (p) => new THREE.Vector3(p.x, p.y, p.z + tickSize)
+      getLabelPosition = (p) => new THREE.Vector3(p.x, p.y, p.z + tickSize + 8)
     } else if (axis === "y") {
-      min = bounds.minY
-      max = bounds.maxY
-      realMin = realBounds.minY
-      getTickPosition = (v) => new THREE.Vector3(bounds.minX, v, bounds.minZ)
-      getTickEnd = (p) => new THREE.Vector3(p.x, p.y, p.z - tickSize)
-      getLabelPosition = (p) => new THREE.Vector3(p.x - tickSize, p.y, p.z - tickSize)
+      min = bounds.minY; max = bounds.maxY; realMin = realBounds.minY
+      getTickPosition = (v) => new THREE.Vector3(bounds.minX, v, bounds.maxZ)
+      getTickEnd = (p) => new THREE.Vector3(p.x, p.y, p.z + tickSize)
+      getLabelPosition = (p) => new THREE.Vector3(p.x, p.y, p.z + tickSize + 8)
     } else {
-      min = bounds.minZ
-      max = bounds.maxZ
-      realMin = realBounds.minZ
+      min = bounds.minZ; max = bounds.maxZ; realMin = realBounds.minZ
       getTickPosition = (v) => new THREE.Vector3(bounds.minX, bounds.minY, v)
       getTickEnd = (p) => new THREE.Vector3(p.x - tickSize, p.y, p.z)
-      getLabelPosition = (p) => new THREE.Vector3(p.x - tickSize, p.y - tickSize, p.z)
+      getLabelPosition = (p) => new THREE.Vector3(p.x - (tickSize + 15), p.y, p.z)
     }
 
     const range = max - min
-    const numTicks = Math.ceil(range / tickInterval)
+    const numTicks = Math.floor(range / tickInterval)
 
-    for (let idx = 0; idx <= numTicks; idx++) {
-      const localValue = min + idx * tickInterval
-      if (localValue > max) break
-      const realValue = realMin + idx * tickInterval
+    for (let i = 0; i <= numTicks; i++) {
+      let localValue: number, displayValue: number
+
+      if (axis === "z") {
+        localValue = max - (i * tickInterval)
+        displayValue = realMin + (i * tickInterval)
+      } else {
+        localValue = min + (i * tickInterval)
+        displayValue = realMin + (i * tickInterval)
+      }
+      
       const tickPos = getTickPosition(localValue)
       const tickEnd = getTickEnd(tickPos)
 
       const geometry = new THREE.BufferGeometry().setFromPoints([tickPos, tickEnd])
-      const material = new THREE.LineBasicMaterial({ color: 0x888888 })
-      const tick = new THREE.Line(geometry, material)
-      this._object.add(tick)
+      const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+      this._object.add(new THREE.Line(geometry, material))
 
       const labelPos = getLabelPosition(tickPos)
-      this.addTextSprite(realValue.toFixed(0), labelPos, 0xffffff, 30 )
+      this.addTextSprite(displayValue.toFixed(0), labelPos, 0xffffff, 1.6)
     }
   }
 
-  private addTextSprite(text: string, position: THREE.Vector3, color: number, fontSize: number, bold = false) {
+  private addTextSprite(text: string, position: THREE.Vector3, color: number, scale: number, bold = false) {
     const sprite = new TextSprite({
       text,
       position,
       color,
-      fontSize,
+      fontSize: 32, 
       bold,
-      depthTest: true
+      depthTest: false,
     })
     
+    const baseScale = scale * 18;
+    sprite.object.scale.set(baseScale, baseScale, 1) 
     this.spriteList.push(sprite.object)
     this._object.add(sprite.object)
+  }
+
+  /**
+   * Overriding the update function from Geo3DSpriteObject 
+   * to ensure labels face the camera correctly.
+  */
+  public updateSpriteScales(camera: THREE.Camera) {
+    this.spriteList.forEach(sprite => {
+    })
   }
 }
