@@ -201,7 +201,8 @@ function App() {
   return (
     <div className={Classes.DARK} style={{ height: '100vh', overflow: 'hidden' }}>
       {drillholeData && sessionId ? (
-        <MainLayout 
+        <MainLayout
+          sessionId={sessionId}
           data={drillholeData}
           initialSettings={savedSettings}
           onOpenLoader={handleOpenLoader}

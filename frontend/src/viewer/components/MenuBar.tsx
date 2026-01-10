@@ -73,19 +73,6 @@ export const MenuBar: FC<MenuBarProps> = ({
     input.click()
   }
 
-  const analysisMenu = (
-    <Menu className={Classes.DARK}>
-      <MenuItem 
-        icon="horizontal-distribution" 
-        text="Cross-Section" 
-        onClick={onOpenCrossSection}
-        disabled={!sessionId}
-      />
-      <MenuItem icon="grid-view" text="Block Model" disabled />
-      <MenuItem icon="scatter-plot" text="Interpolation" disabled />
-    </Menu>
-  )
-
   const fileMenu = (
     <Menu className={Classes.DARK}>
       <MenuItem 
@@ -123,7 +110,7 @@ export const MenuBar: FC<MenuBarProps> = ({
       />
       <MenuDivider />
       <MenuItem 
-        icon="cog" 
+        icon="layout" 
         text="Cross-sections" 
         onClick={onOpenCrossSection}
       />
@@ -242,12 +229,13 @@ export const MenuBar: FC<MenuBarProps> = ({
       <NavbarGroup align={Alignment.RIGHT}>
         <Button
           icon="layout"
-          text="cross-section"
-          disabled={selectedHoleIds.length < 1}
+          title="Open cross-sections dialog"
           onClick={onOpenCrossSection}
+          small
         />
+        <NavbarDivider />
         <Slider
-          min={0.1}
+          min={0}
           max={5}
           stepSize={0.1}
           labelStepSize={2.5}
