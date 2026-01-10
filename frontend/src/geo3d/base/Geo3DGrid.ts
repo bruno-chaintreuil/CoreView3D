@@ -35,7 +35,7 @@ export class Geo3DGrid extends Geo3DObject {
     const sizeY = bounds.maxY - bounds.minY
     const divisionsX = Math.floor(sizeX / cellSize)
     const divisionsY = Math.floor(sizeY / cellSize)
-    const z = bounds.minZ
+    const z = bounds.maxZ
   
     const material = new THREE.LineBasicMaterial({
       color,
