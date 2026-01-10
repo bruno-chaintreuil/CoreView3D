@@ -139,7 +139,7 @@ export class Geo3DDrillhole extends Geo3DSpriteObject {
   private addLabel() {
     const firstPoint = this.trajectory.points[0]
     const position = new THREE.Vector3(firstPoint.x, firstPoint.y, firstPoint.z)
-    position.y += 10
+    position.z += 15
   
     const sprite = new TextSprite({
       text: this.trajectory.hole_id.toString(),
