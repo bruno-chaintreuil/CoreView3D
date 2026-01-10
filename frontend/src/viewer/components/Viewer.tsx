@@ -7,6 +7,7 @@ import { Geo3DScene, SceneObject } from '../../geo3d/components/Geo3DScene'
 import { CameraController } from '../base/CameraController'
 import { useViewerStore } from '../base/useViewerStore'
 import { TrajectoryPoint } from '../../utils/base/Trajectory'
+import { GizmoHelper, GizmoViewport } from '@react-three/drei'
 
 const ClickHandler: FC<{ onDrillholeClick: (holeId: string) => void }> = ({ 
   onDrillholeClick 
@@ -150,7 +151,7 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
     
     if (showBoundingBox) {
       objects.push({ 
-        type: "boundingBox", 
+        type: "BoundingBox", 
         key: "bbox", 
         props: { bounds: localBounds } 
       })
@@ -158,7 +159,7 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
     
     if (showGrid) {
       objects.push({ 
-        type: "grid",
+        type: "Grid",
         key: "grid", 
         props: { 
           bounds: localBounds,
@@ -171,13 +172,14 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
     
     if (showAxes) {
       objects.push({ 
-        type: "axes",
+        type: "Axes",
         key: "axes", 
         props: { 
           bounds: localBounds,
           realBounds: bounds,
           axisLength: 30,
           showTicks: true,
+          showAxes: false,
           tickInterval: 50,
         } 
       })
@@ -188,7 +190,7 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
     .forEach(traj => {
       const holeAssays = data.assays?.filter(a => a.Hole_ID === traj.hole_id) ?? []
       objects.push({
-        type: "drillhole",
+        type: "Drillhole",
         key: traj.hole_id,
         props: { 
           trajectory: traj,
@@ -227,6 +229,10 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
 
   return (
     <Canvas
+      onCreated={({ camera }) => {
+        camera.up.set(0, 0, 1);
+        camera.lookAt(0, 0, 0);
+      }}
       camera={{ 
         position: [cameraDistance, cameraDistance, cameraDistance],
         fov: 60,
@@ -245,6 +251,13 @@ export const ViewerCanvas: FC<ViewerCanvasProps> = ({ data }) => {
         <group scale={[1, 1, zScale]}>
           <Geo3DScene objects={sceneObjects} />
         </group>
+        <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+          <GizmoViewport
+            axisColors={['#ff4444', '#44ff44', '#4444ff']}
+            labelColor="white"
+            labels={['E', 'N', 'Z']} 
+          />
+        </GizmoHelper>
       <ClickHandler onDrillholeClick={handleDrillholeClick} />  
       <TrackballControls
         target={[0, 0, 0]}
