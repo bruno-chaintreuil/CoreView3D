@@ -79,17 +79,14 @@ export type SessionVisProps = ReturnType<typeof sessionVisSelector>
 /* ---------- Store implementation ---------- */
 
 export const useViewerStore = create<ViewerState>((set, get) => ({
-  /* Camera */
   cameraView: null,
   cameraState: null,
   setCameraView: (view) => set({ cameraView: view }),
   setCameraState: (state) => set({ cameraState: state }),
 
-  /* Z exaggeration */
   zScale: 1.0,
   setZScale: (scale) => set({ zScale: scale }),
 
-  /* Visibility */
   visibleHoles: new Set(),
   toggleHole: (holeId) =>
     set((state) => {
@@ -101,7 +98,6 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   showAllHoles: (holeIds) => set({ visibleHoles: new Set(holeIds) }),
   hideAllHoles: () => set({ visibleHoles: new Set() }),
 
-  /* Display options */
   showCollars: true,
   showLabels: true,
   showEndMarkers: true,
@@ -118,7 +114,6 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   setShowAxes: (v) => set({ showAxes: v }),
   setShowDataTree: (v) => set({ showDataTree: v }),
 
-  /* Selection */
   selectedHoleId: null,
   selectedHoleIds: [],
   setSelectedHoleId: (id) => set({ selectedHoleId: id }),
@@ -130,11 +125,9 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
     }),
   clearSelectedHoles: () => set({ selectedHoleIds: [] }),
 
-  /* Mouse */
   mousePosition: { x: 0, y: 0, z: 0 },
   setMousePosition: (p) => set({ mousePosition: p }),
 
-  /* Session */
   initializeFromSession: (settings, holeIds) =>
     set({
       visibleHoles: new Set(settings?.visibleHoles ?? holeIds),
