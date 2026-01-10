@@ -215,7 +215,6 @@ class DrillholeParser:
             
             initial_len = len(df)
             df = df.dropna(subset=['HOLEID', 'EAST', 'NORTH', 'ELEV'])
-            print("df",df["ELEV"],df["MAX_DEPTH"])
             
             if len(df) < initial_len:
                 logger.warning(f"⚠️ Removed {initial_len - len(df)} rows with missing values")
