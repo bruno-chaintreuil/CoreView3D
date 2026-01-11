@@ -1,7 +1,3 @@
-"""
-Tests end-to-end du workflow complet.
-Teste que le parser accepte différentes variations de noms de colonnes.
-"""
 import pytest
 from fastapi.testclient import TestClient
 from pathlib import Path
@@ -14,24 +10,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from coreview3d.api.main import app
 from coreview3d.store.store import PersistenceManager
 
-# Import des helpers
 from tests.helpers import (
     create_test_collar_csv,
     create_test_survey_csv,
     create_test_assays_csv,
     create_test_excel_file,
-    assert_session_data_valid,
-    assert_cross_section_valid
 )
 
 
 @pytest.fixture
 def client_with_temp_db():
-    """Client FastAPI avec une DB temporaire."""
     temp_dir = tempfile.mkdtemp()
     db_path = Path(temp_dir) / "test_e2e.db"
     
-    # Remplacer le persistence_manager global
     from coreview3d.store import store
     original_manager = store.persistence_manager
     store.persistence_manager = PersistenceManager(db_path=str(db_path))
@@ -49,24 +40,18 @@ def client_with_temp_db():
 @pytest.mark.e2e
 @pytest.mark.parametrize("variation", [
     'standard',
-    'uppercase',   # Le cas qui causait le bug !
+    'uppercase',
     'lowercase',
     'mixed',
     'alternative'
 ])
 def test_full_workflow_csv_variations(client_with_temp_db, variation):
-    """
-    Test du workflow complet CSV avec différentes variations de noms de colonnes.
-    Vérifie que le parser accepte toutes les variations courantes.
-    """
     client = client_with_temp_db
     
-    # 1. Créer les CSV avec la variation spécifiée
     collar_csv = create_test_collar_csv(variation)
     survey_csv = create_test_survey_csv(variation)
     assays_csv = create_test_assays_csv(variation)
     
-    # 2. Upload
     response = client.post(
         "/api/session/create",
         files={
@@ -76,7 +61,6 @@ def test_full_workflow_csv_variations(client_with_temp_db, variation):
         }
     )
     
-    # Debug: Afficher la réponse en cas d'erreur
     if response.status_code != 200:
         print(f"\n❌ Test failed for variation: {variation}")
         print(f"Response status: {response.status_code}")
@@ -91,26 +75,27 @@ def test_full_workflow_csv_variations(client_with_temp_db, variation):
     
     session_id = data['session_id']
     
-    # 3. Calculer une cross-section
     response = client.post(
         "/api/cross-section/calculate",
         json={
             "session_id": session_id,
+            "xy_start": [500100, 6000000.0],
+            "xy_stop": [ 500300, 6000200.0],
             "hole_ids": ["DH001", "DH002", "DH003"],
-            "tolerance": 150.0
+            "tolerance": 550.0
         }
     )
     
     if response.status_code != 200:
         print(f"\n❌ Cross-section failed for variation: {variation}")
         print(f"Response body: {response.json()}")
+
+
+    assert response.status_code == 200, f"Error: {response.status_code} - {response.text}"
     
-    assert response.status_code == 200
-    section_data = response.json()['data']
-    
-    # 4. Valider la section
-    assert_cross_section_valid(section_data)
-    
+    data = response.json()
+    assert len(data["drillholes"]) == 3
+
     print(f"✅ Test passed for variation: {variation}")
 
 
@@ -120,11 +105,7 @@ def test_uppercase_variation_regression():
     from coreview3d.parsers.csv_parser import DrillholeParser
     
     parser = DrillholeParser()
-    
-    # Créer un CSV avec les noms en majuscules
     collar_csv = create_test_collar_csv('uppercase')
-    
-    # Ce test doit passer maintenant
     df = parser.parse_collar(collar_csv)
     
     assert 'HOLEID' in df.columns
@@ -159,14 +140,16 @@ def test_full_workflow_excel(client_with_temp_db):
         "/api/cross-section/calculate",
         json={
             "session_id": session_id,
+            "xy_start": [500100, 6000000.0],
+            "xy_stop": [ 500300, 6000200.0],
             "hole_ids": ["DH001", "DH002"],
             "tolerance": 200.0
         }
     )
     
     assert response.status_code == 200
-    section_data = response.json()['data']
-    assert_cross_section_valid(section_data)
+    data = response.json()
+    assert len(data["drillholes"]) == 2
 
 
 @pytest.mark.integration
@@ -174,7 +157,6 @@ def test_full_workflow_excel(client_with_temp_db):
 def test_session_lifecycle(client_with_temp_db):
     client = client_with_temp_db
     
-    # 1. Create
     collar_csv = create_test_collar_csv('uppercase')
     response = client.post(
         "/api/session/create",
@@ -188,23 +170,19 @@ def test_session_lifecycle(client_with_temp_db):
     assert response.status_code == 200
     session_id = response.json()['session_id']
     
-    # 2. Load
     response = client.get(f"/api/session/load/{session_id}")
     assert response.status_code == 200
     assert response.json()['success'] is True
     
-    # 3. List
     response = client.get("/api/session/list")
     assert response.status_code == 200
     sessions = response.json()['sessions']
     assert any(s['session_id'] == session_id for s in sessions)
     
-    # 4. Delete
     response = client.delete(f"/api/session/delete/{session_id}")
     assert response.status_code == 200
     assert response.json()['success'] is True
     
-    # 5. Vérifier que la session n'existe plus
     response = client.get(f"/api/session/load/{session_id}")
     assert response.status_code == 404
 
@@ -212,9 +190,6 @@ def test_session_lifecycle(client_with_temp_db):
 @pytest.mark.integration
 @pytest.mark.e2e
 def test_cross_section_with_tolerance_variations(client_with_temp_db):
-    """
-    Test que différentes tolérances donnent différents résultats.
-    """
     client = client_with_temp_db
     
     collar_csv = create_test_collar_csv('mixed')
@@ -240,12 +215,14 @@ def test_cross_section_with_tolerance_variations(client_with_temp_db):
             json={
                 "session_id": session_id,
                 "hole_ids": ["DH001", "DH002", "DH003"],
+                "xy_start": [500100, 6000000.0],
+                "xy_stop": [ 500300, 6000200.0],
                 "tolerance": tolerance
             }
         )
         
         assert response.status_code == 200
-        section_data = response.json()['data']
+        section_data = response.json()
         hole_counts.append(len(section_data['drillholes']))
     
     assert hole_counts[0] <= hole_counts[1] <= hole_counts[2]
@@ -304,6 +281,8 @@ def test_large_dataset_performance(client_with_temp_db):
         "/api/cross-section/calculate",
         json={
             "session_id": session_id,
+            "xy_start": [500100, 6000000.0],
+            "xy_stop": [ 500300, 6000200.0],
             "hole_ids": [f'DH{i:03d}' for i in range(1, 21)],
             "tolerance": 200.0
         }

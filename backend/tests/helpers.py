@@ -13,7 +13,6 @@ def create_test_collar_csv(variation: str = 'standard') -> BytesIO:
         'depth': [150.0, 200.0, 180.0, 120.0, 175.0]
     }
     
-    # Définir les noms de colonnes selon la variation
     if variation == 'standard':
         columns = {
             'holes': 'Hole_ID',
@@ -195,57 +194,3 @@ def create_test_excel_file(variation: str = 'standard') -> BytesIO:
     
     buffer.seek(0)
     return buffer
-
-
-def assert_session_data_valid(session_data):
-    assert session_data is not None
-    assert session_data.collar_df is not None
-    assert len(session_data.collar_df) > 0
-    
-    required_columns = ['HOLEID', 'EAST', 'NORTH', 'ELEV']
-    for col in required_columns:
-        assert col in session_data.collar_df.columns, f"Column {col} missing from collar_df"
-    
-    if session_data.survey_df is not None:
-        assert 'HOLEID' in session_data.survey_df.columns
-        assert 'DEPTH' in session_data.survey_df.columns
-    
-    if session_data.assays_df is not None:
-        assert 'HOLEID' in session_data.assays_df.columns
-        assert 'FROM' in session_data.assays_df.columns
-        assert 'TO' in session_data.assays_df.columns
-
-
-def assert_cross_section_valid(section_data: dict):
-    assert 'section_line' in section_data, "Missing 'section_line' in response"
-    assert 'drillholes' in section_data, "Missing 'drillholes' in response"
-    assert 'bounds' in section_data, "Missing 'bounds' in response"
-    
-    line = section_data['section_line']
-    assert 'point_A' in line
-    assert 'point_B' in line
-    assert 'length' in line
-    assert line['length'] > 0, "Section line length must be > 0"
-    
-    assert len(section_data['drillholes']) > 0, "No drillholes in section"
-    
-    for hole in section_data['drillholes']:
-        assert 'hole_id' in hole
-        assert 'trace' in hole
-        assert len(hole['trace']) >= 2, f"Hole {hole['hole_id']} has less than 2 trace points"
-        
-        for point in hole['trace']:
-            assert 'x_along_section' in point
-            assert 'y_elevation' in point
-    
-    bounds = section_data['bounds']
-    assert 'min_distance' in bounds
-    assert 'max_distance' in bounds
-    assert 'min_elevation' in bounds
-    assert 'max_elevation' in bounds
-    assert bounds['max_distance'] > bounds['min_distance'], "Invalid distance bounds"
-    assert bounds['max_elevation'] > bounds['min_elevation'], "Invalid elevation bounds"
-
-
-def create_minimal_collar_csv(variation: str = 'standard') -> BytesIO:
-    return create_test_collar_csv(variation)

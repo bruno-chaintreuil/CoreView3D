@@ -1,4 +1,3 @@
-# geometry/cross_section.py
 import numpy as np
 from typing import List, Tuple
 import pandas as pd

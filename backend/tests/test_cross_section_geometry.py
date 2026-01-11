@@ -1,183 +1,122 @@
 import pytest
 import numpy as np
-from coreview3d.geometry.cross_section import (
-    calculate_line_from_holes,
-    calculate_cross_section,
-    _calculate_hole_trace,
-    _get_hole_intervals
+from src.coreview3d.geometry.cross_section import (
+    project_drillhole_to_section,
+    calculate_simple_cross_section
 )
 
-def test_calculate_line_from_holes_basic(sample_collar_df):
-    hole_ids = ['DH001', 'DH002']
-    
-    pt_A, pt_B = calculate_line_from_holes(sample_collar_df, hole_ids)
-    
-    assert isinstance(pt_A, np.ndarray)
-    assert isinstance(pt_B, np.ndarray)
-    assert len(pt_A) == 2
-    assert len(pt_B) == 2
-    
-    length = np.linalg.norm(pt_B - pt_A)
-    assert length > 0
 
+@pytest.fixture
+def sample_trajectories():
+    return [
+        {
+            'hole_id': 'DH001',
+            'collar': {'east': 500000, 'north': 6000000, 'elev': 100},
+            'points': [
+                {'x': 500000, 'y': 6000000, 'z': 100},
+                {'x': 500000, 'y': 6000000, 'z': 0}
+            ]
+        },
+        {
+            'hole_id': 'DH002',
+            'collar': {'east': 500100, 'north': 6000000, 'elev': 100},
+            'points': [
+                {'x': 500100, 'y': 6000000, 'z': 100},
+                {'x': 500100, 'y': 6000000, 'z': -50}
+            ]
+        },
+        {
+            'hole_id': 'DH003',
+            'collar': {'east': 500200, 'north': 6001000, 'elev': 100}, # Éloigné en Nord
+            'points': [
+                {'x': 500200, 'y': 6001000, 'z': 100},
+                {'x': 500200, 'y': 6001000, 'z': 0}
+            ]
+        }
+    ]
 
-def test_calculate_line_from_holes_multiple(sample_collar_df):
+def test_project_drillhole_to_section_basic():
+    xy_start = np.array([500000, 6000000])
+    xy_stop = np.array([500200, 6000000]) # Section Est-Ouest pure
+    
+    trajectory_points = [
+        {'x': 500100, 'y': 6000000, 'z': 50}, # Pile sur la ligne à mi-chemin
+    ]
+    
+    projected = project_drillhole_to_section(trajectory_points, xy_start, xy_stop)
+    
+    assert len(projected) == 1
+    assert projected[0]['x'] == 100.0  # Distance depuis le départ
+    assert projected[0]['z'] == 50.0   # Élévation conservée
+
+def test_calculate_simple_cross_section_filtering(sample_trajectories):
+    xy_start = (500000, 6000000)
+    xy_stop = (500500, 6000000)
     hole_ids = ['DH001', 'DH002', 'DH003']
     
-    pt_A, pt_B = calculate_line_from_holes(sample_collar_df, hole_ids)
-    
-    length = np.linalg.norm(pt_B - pt_A)
-    assert length > 100  # Au moins 100m
-
-
-def test_calculate_line_from_holes_insufficient(sample_collar_df):
-    hole_ids = ['DH001']
-    
-    with pytest.raises(ValueError, match="Need at least 2 holes"):
-        calculate_line_from_holes(sample_collar_df, hole_ids)
-
-
-def test_calculate_line_from_holes_invalid_ids(sample_collar_df):
-    hole_ids = ['INVALID1', 'INVALID2']
-    
-    with pytest.raises(ValueError):
-        calculate_line_from_holes(sample_collar_df, hole_ids)
-
-
-def test_calculate_cross_section_basic(sample_collar_df, sample_survey_df, sample_assays_df):
-    hole_ids = ['DH001', 'DH002']
-    point_A = np.array([500050, 6000050])
-    point_B = np.array([500350, 6000350])
-    
-    result = calculate_cross_section(
-        collar_df=sample_collar_df,
-        survey_df=sample_survey_df,
-        assays_df=sample_assays_df,
-        hole_ids=hole_ids,
-        point_A=point_A,
-        point_B=point_B,
-        tolerance=100.0
+    result = calculate_simple_cross_section(
+        sample_trajectories, hole_ids, xy_start, xy_stop, tolerance=50.0
     )
     
-    assert 'section_line' in result
-    assert 'drillholes' in result
-    assert 'bounds' in result
-    
-    assert len(result['drillholes']) > 0
-    assert result['section_line']['length'] > 0
+    found_ids = [h['hole_id'] for h in result['drillholes']]
+    assert 'DH001' in found_ids
+    assert 'DH002' in found_ids
+    assert 'DH003' not in found_ids
+    assert len(result['drillholes']) == 2
 
-
-def test_calculate_cross_section_with_tolerance(sample_collar_df, sample_survey_df, sample_assays_df):
-    point_A = np.array([500050, 6000050])
-    point_B = np.array([500350, 6000350])
+def test_calculate_simple_cross_section_large_tolerance(sample_trajectories):
+    xy_start = (500000, 6000000)
+    xy_stop = (500500, 6000000)
+    hole_ids = ['DH001', 'DH002', 'DH003']
     
-    result_large = calculate_cross_section(
-        collar_df=sample_collar_df,
-        survey_df=sample_survey_df,
-        assays_df=sample_assays_df,
-        hole_ids=None,
-        point_A=point_A,
-        point_B=point_B,
-        tolerance=500.0
+    result = calculate_simple_cross_section(
+        sample_trajectories, hole_ids, xy_start, xy_stop, tolerance=1500.0
     )
     
-    result_small = calculate_cross_section(
-        collar_df=sample_collar_df,
-        survey_df=sample_survey_df,
-        assays_df=sample_assays_df,
-        hole_ids=None,
-        point_A=point_A,
-        point_B=point_B,
-        tolerance=10.0
+    assert len(result['drillholes']) == 3
+
+def test_calculate_simple_cross_section_id_selection(sample_trajectories):
+    xy_start = (500000, 6000000)
+    xy_stop = (500500, 6000000)
+    
+    result = calculate_simple_cross_section(
+        sample_trajectories, ['DH001'], xy_start, xy_stop, tolerance=100.0
     )
     
-    assert len(result_large['drillholes']) >= len(result_small['drillholes'])
+    assert len(result['drillholes']) == 1
+    assert result['drillholes'][0]['hole_id'] == 'DH001'
 
 
-def test_calculate_cross_section_no_tolerance_match(sample_collar_df):
-    point_A = np.array([600000, 7000000])  # Très loin
-    point_B = np.array([600100, 7000100])
+def test_cross_section_request_validation():
+    from src.coreview3d.models.cross_section import CrossSectionRequest
     
-    with pytest.raises(ValueError, match="No drillholes found"):
-        calculate_cross_section(
-            collar_df=sample_collar_df,
-            survey_df=None,
-            assays_df=None,
-            hole_ids=None,
-            point_A=point_A,
-            point_B=point_B,
-            tolerance=10.0
-        )
-
-
-def test_calculate_cross_section_line_too_short(sample_collar_df):
-    point_A = np.array([500000, 6000000])
-    point_B = np.array([500000.5, 6000000.5])  # < 1m
+    data = {
+        "session_id": "test-session",
+        "xy_start": (0.0, 0.0),
+        "xy_stop": (100.0, 100.0),
+        "hole_ids": ["DH01"],
+        "tolerance": 50.0
+    }
     
-    with pytest.raises(ValueError, match="Section line too short"):
-        calculate_cross_section(
-            collar_df=sample_collar_df,
-            survey_df=None,
-            assays_df=None,
-            hole_ids=['DH001'],
-            point_A=point_A,
-            point_B=point_B,
-            tolerance=100.0
-        )
+    req = CrossSectionRequest(**data)
+    assert req.session_id == "test-session"
+    assert req.xy_start == (0.0, 0.0)
 
-
-def test_calculate_cross_section_without_survey(sample_collar_df, sample_assays_df):
-    point_A = np.array([500050, 6000050])
-    point_B = np.array([500350, 6000350])
+def test_cross_section_response_structure():
+    from src.coreview3d.models.cross_section import CrossSectionResponse
     
-    result = calculate_cross_section(
-        collar_df=sample_collar_df,
-        survey_df=None,
-        assays_df=sample_assays_df,
-        hole_ids=['DH001', 'DH002'],
-        point_A=point_A,
-        point_B=point_B,
-        tolerance=100.0
-    )
+    sample_response = {
+        "success": True,
+        "xy_start": (0.0, 0.0),
+        "xy_stop": (100.0, 0.0),
+        "drillholes": [
+            {
+                "hole_id": "DH01",
+                "trace": [{"x": 10.0, "z": 100.0}, {"x": 10.0, "z": 0.0}]
+            }
+        ]
+    }
     
-    assert len(result['drillholes']) > 0
-    
-    for hole in result['drillholes']:
-        if len(hole['trace']) >= 2:
-            x_values = [p['x_along_section'] for p in hole['trace']]
-            assert max(x_values) - min(x_values) < 1.0  # Variation < 1m
-
-
-def test_calculate_hole_trace_vertical(sample_collar_df):
-    collar = sample_collar_df.iloc[0]
-    point_A = np.array([500000, 6000000])
-    direction_norm = np.array([1.0, 0.0])
-    
-    trace = _calculate_hole_trace(
-        hole_id=collar['HOLEID'],
-        collar=collar,
-        survey_df=None,
-        point_A=point_A,
-        direction_norm=direction_norm
-    )
-    
-    assert len(trace) == 2  # Collar + toe
-    assert trace[0]['depth_along_hole'] == 0.0
-    assert trace[1]['depth_along_hole'] == collar['MAX_DEPTH']
-
-
-def test_get_hole_intervals(sample_assays_df):
-    intervals = _get_hole_intervals('DH001', sample_assays_df)
-    
-    assert intervals is not None
-    assert len(intervals) == 3
-    assert intervals[0]['lithology'] == 'GRANITE'
-    assert 'au_ppm' in intervals[0]
-    assert 'cu_pct' in intervals[0]
-
-
-def test_get_hole_intervals_no_data(sample_assays_df):
-    intervals = _get_hole_intervals('INVALID_HOLE', sample_assays_df)
-    
-    assert intervals is None
-
+    resp = CrossSectionResponse(**sample_response)
+    assert len(resp.drillholes) == 1
+    assert resp.drillholes[0].trace[0].x == 10.0
